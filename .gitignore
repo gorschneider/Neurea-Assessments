@@ -1,0 +1,5 @@
+# Patientendaten niemals versionieren
+daten/
+*.db
+*.db-journal
+__pycache__/

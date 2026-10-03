@@ -18,6 +18,9 @@
   const auswertungEl = document.getElementById("auswertung");
   const selEinschaetzung = document.getElementById("sel-einschaetzung");
 
+  let aktuelleId = null;     // ID des Datensatzes in der Datenbank (falls gespeichert)
+  let dbVerfuegbar = false;
+
   // ---------- Aufbau ----------
 
   function diagnoseOptionenFuellen(select, platzhalter) {
@@ -211,10 +214,13 @@
     new FormData(formular).forEach(function (wert, schluessel) { daten[schluessel] = wert; });
     // Deaktivierte Felder fehlen in FormData – explizit ergänzen
     formular.querySelectorAll("[name]:disabled").forEach(function (el) { daten[el.name] = el.value; });
-    daten.diagnose_icd_vorschlag = (selDiagnose.selectedOptions[0] || {}).dataset?.code || "";
+    const diagOpt = selDiagnose.selectedOptions[0];
+    daten.diagnose_icd_vorschlag = (diagOpt && diagOpt.dataset.code) || "";
+    daten.diagnose_gruppe = diagOpt && diagOpt.parentElement.tagName === "OPTGROUP" ? diagOpt.parentElement.label : "";
     daten.auswertung_vorschlag = formular.dataset.vorschlag || "";
     daten.auswertung_befunde = Array.from(auswertungEl.querySelectorAll(".befund")).map(function (p) { return p.textContent; });
     daten._erstellt = new Date().toISOString();
+    if (aktuelleId) daten._db_id = aktuelleId;
     daten._version = 1;
     return daten;
   }
@@ -227,6 +233,7 @@
       if (el instanceof RadioNodeList) el.value = daten[k];
       else el.value = daten[k];
     });
+    aktuelleIdSetzen(daten._db_id || null);
     diagnoseGeaendert(false);
     durchfuehrbarGeaendert();
     auswerten();
@@ -287,8 +294,115 @@
     if (!confirm("Formular leeren und gespeicherten Entwurf verwerfen?")) return;
     try { localStorage.removeItem(SPEICHER_KEY); } catch (e) { /* ignorieren */ }
     formular.reset();
+    aktuelleIdSetzen(null);
     initialisieren();
   });
+
+  // ---------- Datenbank (lokaler Server) ----------
+
+  const dlgListe = document.getElementById("dlg-liste");
+  const tblListe = document.getElementById("tbl-liste");
+  const inpSuche = document.getElementById("inp-suche");
+  let listeCache = [];
+
+  function api(pfad, optionen) {
+    return fetch(pfad, Object.assign({ headers: { "Content-Type": "application/json" } }, optionen))
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (body) {
+          if (!r.ok) throw new Error(body.fehler || "HTTP " + r.status);
+          return body;
+        });
+      });
+  }
+
+  function aktuelleIdSetzen(id) {
+    aktuelleId = id;
+    const el = document.getElementById("db-status");
+    el.textContent = id ? "Datensatz #" + id : "neuer Datensatz";
+    document.getElementById("btn-db-speichern").textContent =
+      id ? "Änderungen speichern" : "In Datenbank speichern";
+  }
+
+  function dbPruefen() {
+    if (location.protocol === "file:") return;
+    api("/api/status").then(function (s) {
+      dbVerfuegbar = true;
+      document.querySelectorAll(".db-only").forEach(function (el) { el.classList.remove("versteckt"); });
+      document.getElementById("fuss-speicherort").textContent = "Datenbank: " + s.datenbank;
+      aktuelleIdSetzen(aktuelleId);
+    }).catch(function () { /* ohne Server: nur Browser-Entwurf */ });
+  }
+
+  document.getElementById("btn-db-speichern").addEventListener("click", function () {
+    if (!dbVerfuegbar || !pflichtfelderPruefen()) return;
+    const daten = datenSammeln();
+    const anfrage = aktuelleId
+      ? api("/api/untersuchungen/" + aktuelleId, { method: "PUT", body: JSON.stringify(daten) })
+      : api("/api/untersuchungen", { method: "POST", body: JSON.stringify(daten) });
+    anfrage.then(function (r) {
+      aktuelleIdSetzen(r.id);
+      try { localStorage.removeItem(SPEICHER_KEY); } catch (e) { /* ignorieren */ }
+      meldung("In Datenbank gespeichert (Datensatz #" + r.id + ").");
+    }).catch(function (e) { alert("Speichern fehlgeschlagen: " + e.message); });
+  });
+
+  function listeZeichnen() {
+    const suche = inpSuche.value.trim().toLowerCase();
+    tblListe.innerHTML = "";
+    const zeilen = listeCache.filter(function (u) {
+      return !suche || [u.patient_ref, u.diagnose, u.datum, u.messzeitpunkt]
+        .join(" ").toLowerCase().includes(suche);
+    });
+    if (!zeilen.length) {
+      tblListe.innerHTML = '<tr><td colspan="7" class="leer">Keine Einträge.</td></tr>';
+      return;
+    }
+    zeilen.forEach(function (u) {
+      const tr = document.createElement("tr");
+      [u.id, u.datum, u.patient_ref, u.messzeitpunkt, u.diagnose, u.einschaetzung].forEach(function (w) {
+        const td = document.createElement("td");
+        td.textContent = w == null ? "" : w;
+        tr.appendChild(td);
+      });
+      const td = document.createElement("td");
+      td.className = "zeilen-aktionen";
+      const laden = document.createElement("button");
+      laden.type = "button";
+      laden.textContent = "Öffnen";
+      laden.addEventListener("click", function () {
+        api("/api/untersuchungen/" + u.id).then(function (d) {
+          datenLaden(d);
+          dlgListe.close();
+          meldung("Datensatz #" + u.id + " geladen.");
+        }).catch(function (e) { alert(e.message); });
+      });
+      const loeschen = document.createElement("button");
+      loeschen.type = "button";
+      loeschen.className = "gefahr";
+      loeschen.textContent = "Löschen";
+      loeschen.addEventListener("click", function () {
+        if (!confirm("Untersuchung #" + u.id + " (" + u.patient_ref + ", " + u.datum + ") endgültig löschen?")) return;
+        api("/api/untersuchungen/" + u.id, { method: "DELETE" }).then(function () {
+          if (aktuelleId === u.id) aktuelleIdSetzen(null);
+          listeLaden();
+        }).catch(function (e) { alert(e.message); });
+      });
+      td.append(laden, loeschen);
+      tr.appendChild(td);
+      tblListe.appendChild(tr);
+    });
+  }
+
+  function listeLaden() {
+    return api("/api/untersuchungen").then(function (l) { listeCache = l; listeZeichnen(); });
+  }
+
+  document.getElementById("btn-db-liste").addEventListener("click", function () {
+    listeLaden().then(function () { dlgListe.showModal(); })
+      .catch(function (e) { alert("Liste konnte nicht geladen werden: " + e.message); });
+  });
+  document.getElementById("btn-dlg-schliessen").addEventListener("click", function () { dlgListe.close(); });
+  inpSuche.addEventListener("input", listeZeichnen);
 
   function meldung(text) {
     let el = document.getElementById("meldung");
@@ -312,7 +426,9 @@
     auswerten();
   }
 
+  aktuelleIdSetzen(null);
   initialisieren();
+  dbPruefen();
   try {
     const entwurf = localStorage.getItem(SPEICHER_KEY);
     if (entwurf) {

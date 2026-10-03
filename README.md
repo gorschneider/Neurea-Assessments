@@ -1,18 +1,51 @@
 # Neurea Assessments – Romberg-Assessment
 
-Webbasierte Eingabemaske für den Romberg-Test (inkl. Sharpened Romberg / Tandemstand) in der neurologischen Rehabilitation.
+Webbasierte Eingabemaske für den Romberg-Test (inkl. Sharpened Romberg / Tandemstand) in der neurologischen Rehabilitation – mit lokaler SQLite-Datenbank für spätere Auswertungen und Datenmodelle.
 
 ## Starten
 
-Keine Installation nötig: `index.html` im Browser öffnen – oder lokal ausliefern, z. B. `npx serve .`
+Voraussetzung: [Python 3](https://www.python.org/downloads/) (unter Windows bei der Installation „Add Python to PATH“ anhaken). Weitere Pakete sind nicht nötig.
+
+- **Windows:** Doppelklick auf `start.bat`
+- **macOS / Linux:** `./start.sh`
+
+Der Browser öffnet sich automatisch unter <http://127.0.0.1:8765/>. Der Server ist nur vom eigenen PC aus erreichbar. Beenden mit `Strg+C` im Konsolenfenster.
+
+Optionen: `python server.py --port 9000 --db D:\Pfad\romberg.db --kein-browser`
+
+Ohne Server (`index.html` direkt öffnen) funktioniert die Maske weiterhin, speichert dann aber nur Entwürfe im Browser.
 
 ## Funktionen
 
-- Patienten- und Untersuchungsdaten
-- Hauptdiagnose und Nebendiagnose per Drop-down (gruppierte, übliche neurologische Krankheitsbilder mit ICD-10-GM-Vorschlag, Freitext-Option); Liste in `js/diagnosen.js`
-- Rahmenbedingungen (Untergrund, Schuhwerk, Testdauer 30/60 s, Sicherung)
-- Vier Testbedingungen: Romberg und Sharpened Romberg, jeweils mit offenen und geschlossenen Augen (Zeit, Schwankung, Fallneigung, Ergebnis)
-- Automatischer Auswertungsvorschlag (Romberg positiv/negativ/nicht beurteilbar, Zeitquotient, Fallneigung, Sturzrisiko-Hinweis)
-- Entwurf lokal im Browser speichern, JSON-Export/-Import, Druck/PDF
+- Patienten- und Untersuchungsdaten, Haupt- und Nebendiagnose per Drop-down (gruppierte neurologische Krankheitsbilder mit ICD-10-GM-Vorschlag, Freitext-Option; Liste in `js/diagnosen.js`)
+- Vier Testbedingungen: Romberg und Sharpened Romberg, jeweils Augen offen / geschlossen
+- Automatischer Auswertungsvorschlag
+- **In Datenbank speichern**, bestehende Untersuchungen öffnen, ändern, löschen und durchsuchen
+- **CSV-Export** der Analyse-Tabelle (Semikolon-getrennt, Excel-kompatibel)
+- JSON-Export/-Import, Druck/PDF
 
-Die Daten verlassen den Browser nicht. Die automatische Auswertung ist eine Orientierungshilfe und ersetzt keine klinische Beurteilung.
+## Datenbank
+
+Standardpfad: `daten/romberg.db` (eine SQLite-Datei; regelmäßig sichern). Der Ordner `daten/` ist per `.gitignore` von der Versionierung ausgeschlossen.
+
+| Tabelle / View | Inhalt |
+|---|---|
+| `patient` | eine Zeile pro Patient/in (`patient_ref`, Geburtsdatum, Geschlecht) |
+| `untersuchung` | eine Zeile pro Untersuchung (Diagnose, Rahmenbedingungen, Einschätzung …) |
+| `messung` | eine Zeile pro Testbedingung (`test` romberg/tandem, `augen` offen/geschlossen, `zeit_s`, `schwankung` 0–3, `fallneigung`, `ergebnis`) |
+| `v_analyse` | flache Sicht: eine Zeile pro Untersuchung, Messungen als Spalten, plus `alter_jahre` und `tage_seit_ereignis` |
+
+Mehrere Untersuchungen derselben Person (Aufnahme / Verlauf / Entlassung) hängen über `patient_ref` am selben Patienten – damit sind Verlaufsanalysen möglich.
+
+**Datenschutz:** Für Auswertungen statt Klarnamen eine Pseudonym-ID (z. B. `PSN-001`) als Patient eintragen und die Zuordnungsliste getrennt aufbewahren.
+
+### Auswertung
+
+```python
+import sqlite3, pandas as pd
+df = pd.read_sql_query("SELECT * FROM v_analyse", sqlite3.connect("daten/romberg.db"))
+```
+
+Ein vollständiges Beispiel steht in `analyse/beispiel_analyse.py` (`pip install pandas`). Die Datei lässt sich ebenso mit R (`RSQLite`), DB Browser for SQLite oder Excel (über den CSV-Export) öffnen.
+
+Die automatische Auswertung ist eine Orientierungshilfe und ersetzt keine klinische Beurteilung.

@@ -13,6 +13,9 @@
       <p class="untertitel">Eingabemaske Gleichgewicht / Standataxie · Neurologische Rehabilitation</p>
     </div>
     <div class="aktionen kein-druck">
+      <span class="db-only versteckt" id="db-status"></span>
+      <button type="button" class="db-only versteckt" id="btn-db-speichern">In Datenbank speichern</button>
+      <button type="button" class="db-only versteckt" id="btn-db-liste">Gespeicherte Untersuchungen</button>
       <button type="button" id="btn-speichern">Entwurf speichern</button>
       <button type="button" id="btn-export">JSON exportieren</button>
       <label class="button-label">JSON importieren<input type="file" id="inp-import" accept="application/json" hidden></label>
@@ -172,8 +175,26 @@
     </fieldset>
   </template>
 
+  <dialog id="dlg-liste" class="kein-druck">
+    <div class="dlg-kopf">
+      <h2>Gespeicherte Untersuchungen</h2>
+      <div class="aktionen">
+        <a class="button-label" href="/api/export.csv" download>CSV-Export (Analyse)</a>
+        <button type="button" id="btn-dlg-schliessen">Schließen</button>
+      </div>
+    </div>
+    <input type="search" id="inp-suche" placeholder="Suchen (Patient, Diagnose, Datum) …">
+    <div class="tabelle-rahmen">
+      <table>
+        <thead><tr><th>#</th><th>Datum</th><th>Patient</th><th>Zeitpunkt</th><th>Diagnose</th><th>Einschätzung</th><th></th></tr></thead>
+        <tbody id="tbl-liste"></tbody>
+      </table>
+    </div>
+  </dialog>
+
   <footer class="fuss kein-druck">
-    <p>Daten werden nur lokal im Browser gespeichert. Die automatische Auswertung ist eine Orientierungshilfe und ersetzt keine klinische Beurteilung.</p>
+    <p id="fuss-speicherort">Daten werden nur lokal im Browser gespeichert. Für die Datenbank-Speicherung die Anwendung über <code>start.bat</code> / <code>start.sh</code> starten.</p>
+    <p>Die automatische Auswertung ist eine Orientierungshilfe und ersetzt keine klinische Beurteilung.</p>
   </footer>
 
   <script src="js/diagnosen.js"></script>
