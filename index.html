@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Romberg-Assessment</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="kopf">
+    <div>
+      <h1>Romberg-Assessment</h1>
+      <p class="untertitel">Eingabemaske Gleichgewicht / Standataxie · Neurologische Rehabilitation</p>
+    </div>
+    <div class="aktionen kein-druck">
+      <button type="button" id="btn-speichern">Entwurf speichern</button>
+      <button type="button" id="btn-export">JSON exportieren</button>
+      <label class="button-label">JSON importieren<input type="file" id="inp-import" accept="application/json" hidden></label>
+      <button type="button" id="btn-drucken">Drucken / PDF</button>
+      <button type="button" id="btn-reset" class="gefahr">Neu</button>
+    </div>
+  </header>
+
+  <main>
+    <form id="formular" novalidate>
+      <!-- 1. Patientendaten -->
+      <section class="karte">
+        <h2>1. Patient &amp; Untersuchung</h2>
+        <div class="raster">
+          <label>Patient (Name / ID) *<input name="patient" required autocomplete="off"></label>
+          <label>Geburtsdatum<input type="date" name="geburtsdatum"></label>
+          <label>Geschlecht
+            <select name="geschlecht">
+              <option value="">– bitte wählen –</option>
+              <option>weiblich</option><option>männlich</option><option>divers</option>
+            </select>
+          </label>
+          <label>Untersuchungsdatum *<input type="date" name="datum" required></label>
+          <label>Untersucher/in *<input name="untersucher" required></label>
+          <label>Station / Bereich<input name="station"></label>
+          <label>Messzeitpunkt
+            <select name="messzeitpunkt">
+              <option value="">– bitte wählen –</option>
+              <option>Aufnahme</option><option>Verlauf</option><option>Entlassung</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <!-- 2. Diagnose -->
+      <section class="karte">
+        <h2>2. Diagnose</h2>
+        <div class="raster">
+          <label class="breit">Hauptdiagnose *
+            <select name="diagnose" id="sel-diagnose" required></select>
+          </label>
+          <label class="breit versteckt" id="feld-diagnose-frei">Diagnose (Freitext) *
+            <input name="diagnose_frei">
+          </label>
+          <label>ICD-10-GM<input name="icd" id="inp-icd" placeholder="wird vorgeschlagen"></label>
+          <label>Betroffene Seite
+            <select name="seite">
+              <option value="">– bitte wählen –</option>
+              <option>rechts</option><option>links</option><option>beidseits</option><option>nicht zutreffend</option>
+            </select>
+          </label>
+          <label>Ereignis / Erstdiagnose<input type="date" name="ereignisdatum"></label>
+          <label class="breit">Nebendiagnose
+            <select name="nebendiagnose" id="sel-nebendiagnose"></select>
+          </label>
+        </div>
+      </section>
+
+      <!-- 3. Rahmenbedingungen -->
+      <section class="karte">
+        <h2>3. Rahmenbedingungen</h2>
+        <div class="raster">
+          <label>Untergrund
+            <select name="untergrund">
+              <option>fester Boden</option><option>Schaumstoffmatte</option>
+            </select>
+          </label>
+          <label>Schuhwerk
+            <select name="schuhwerk">
+              <option>barfuß</option><option>Strümpfe</option><option>eigene Schuhe</option>
+            </select>
+          </label>
+          <label>Max. Testdauer je Bedingung (s)
+            <select name="maxdauer" id="sel-maxdauer">
+              <option value="30" selected>30</option><option value="60">60</option>
+            </select>
+          </label>
+          <label>Sicherung durch Therapeut/in
+            <select name="sicherung">
+              <option>Stand-by</option><option>Kontaktsicherung</option><option>keine</option>
+            </select>
+          </label>
+          <fieldset class="breit">
+            <legend>Test durchführbar?</legend>
+            <label class="inline"><input type="radio" name="durchfuehrbar" value="ja" checked> ja</label>
+            <label class="inline"><input type="radio" name="durchfuehrbar" value="nein"> nein</label>
+            <input name="abbruchgrund" id="inp-abbruchgrund" class="versteckt" placeholder="Grund (z. B. kein freier Stand möglich)">
+          </fieldset>
+        </div>
+      </section>
+
+      <!-- 4. Testbedingungen -->
+      <section class="karte" id="karte-test">
+        <h2>4. Testdurchführung</h2>
+        <p class="hinweis">Aufrechter Stand, Arme vor dem Körper ausgestreckt oder seitlich hängend. Zeit bis zum Verlassen der Ausgangsposition (Ausfallschritt, Festhalten, Augenöffnen) bzw. bis zur maximalen Testdauer.</p>
+        <div id="bedingungen"></div>
+      </section>
+
+      <!-- 5. Auswertung -->
+      <section class="karte">
+        <h2>5. Auswertung</h2>
+        <div id="auswertung" class="auswertung" aria-live="polite"></div>
+        <div class="raster">
+          <label>Klinische Einschätzung Romberg
+            <select name="einschaetzung" id="sel-einschaetzung">
+              <option value="">– automatisch vorgeschlagen –</option>
+              <option>Romberg negativ</option>
+              <option>Romberg positiv</option>
+              <option>nicht beurteilbar</option>
+            </select>
+          </label>
+          <label>Begleitsymptome
+            <select name="symptome">
+              <option value="">keine</option>
+              <option>Schwindel</option><option>Übelkeit</option><option>Angst / Sturzangst</option><option>Schmerzen</option>
+            </select>
+          </label>
+          <label class="breit">Bemerkungen / Therapieempfehlung
+            <textarea name="bemerkungen" rows="4"></textarea>
+          </label>
+        </div>
+      </section>
+    </form>
+  </main>
+
+  <template id="tpl-bedingung">
+    <fieldset class="bedingung">
+      <legend></legend>
+      <div class="raster">
+        <label>Zeit (s)<input type="number" min="0" step="0.1" data-feld="zeit"></label>
+        <label>Schwankung
+          <select data-feld="schwankung">
+            <option value="">–</option>
+            <option value="0">keine</option>
+            <option value="1">leicht</option>
+            <option value="2">mäßig</option>
+            <option value="3">stark</option>
+          </select>
+        </label>
+        <label>Fallneigung
+          <select data-feld="richtung">
+            <option value="">keine</option>
+            <option>nach vorne</option><option>nach hinten</option>
+            <option>nach rechts</option><option>nach links</option><option>ungerichtet</option>
+          </select>
+        </label>
+        <label>Ergebnis
+          <select data-feld="ergebnis">
+            <option value="">–</option>
+            <option value="sicher">sicher gehalten</option>
+            <option value="schritt">Ausfallschritt</option>
+            <option value="halt">Festhalten / Hilfe nötig</option>
+            <option value="nicht">nicht durchgeführt</option>
+          </select>
+        </label>
+      </div>
+    </fieldset>
+  </template>
+
+  <footer class="fuss kein-druck">
+    <p>Daten werden nur lokal im Browser gespeichert. Die automatische Auswertung ist eine Orientierungshilfe und ersetzt keine klinische Beurteilung.</p>
+  </footer>
+
+  <script src="js/diagnosen.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
