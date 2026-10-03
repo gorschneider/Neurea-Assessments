@@ -10,6 +10,13 @@
     { id: "sr_ag", titel: "Sharpened Romberg (Tandemstand) – Augen geschlossen" },
   ];
 
+  const KURZNAMEN = {
+    ro_ao: "Romberg AO",
+    ro_ag: "Romberg AG",
+    sr_ao: "Tandem AO",
+    sr_ag: "Tandem AG",
+  };
+
   const formular = document.getElementById("formular");
   const selDiagnose = document.getElementById("sel-diagnose");
   const selNeben = document.getElementById("sel-nebendiagnose");
@@ -75,14 +82,35 @@
     });
   }
 
+  // Felder zum Ausfallschritt nur bei Ergebnis "Ausfallschritt" anzeigen
+  function schrittDetailsAktualisieren(id, leeren) {
+    const schritt = formular[id + "_ergebnis"].value === "schritt";
+    const details = document.querySelector('[data-bedingung="' + id + '"] .schritt-details');
+    details.classList.toggle("versteckt", !schritt);
+    if (!schritt && leeren) {
+      formular[id + "_schritt_zeit"].value = "";
+      formular[id + "_schritt_richtung"].value = "";
+    }
+  }
+
+  function alleSchrittDetailsAktualisieren() {
+    BEDINGUNGEN.forEach(function (b) { schrittDetailsAktualisieren(b.id, false); });
+  }
+
   selDiagnose.addEventListener("change", function () { diagnoseGeaendert(true); });
   formular.addEventListener("change", function (e) {
-    if (e.target.name === "durchfuehrbar") durchfuehrbarGeaendert();
+    const name = e.target.name || "";
+    if (name === "durchfuehrbar") durchfuehrbarGeaendert();
     // Bei erreichter Maximalzeit "sicher gehalten" vorschlagen
-    const m = /^(\w+)_zeit$/.exec(e.target.name || "");
+    const m = /^(\w\w_\w\w)_zeit$/.exec(name);
     if (m) {
       const ergebnis = formular[m[1] + "_ergebnis"];
       if (!ergebnis.value && Number(e.target.value) >= maxDauer()) ergebnis.value = "sicher";
+    }
+    const erg = /^(\w\w_\w\w)_ergebnis$/.exec(name);
+    if (erg) {
+      schrittDetailsAktualisieren(erg[1], true);
+      if (e.target.value === "schritt") formular[erg[1] + "_schritt_zeit"].focus();
     }
     auswerten();
   });
@@ -98,12 +126,17 @@
     const zeitRoh = formular[id + "_zeit"].value;
     const schwRoh = formular[id + "_schwankung"].value;
     const ergebnis = formular[id + "_ergebnis"].value;
+    const schrittZeitRoh = formular[id + "_schritt_zeit"].value;
     const d = {
       zeit: zeitRoh === "" ? null : Number(zeitRoh),
       schwankung: schwRoh === "" ? null : Number(schwRoh),
       richtung: formular[id + "_richtung"].value,
       ergebnis: ergebnis,
+      schrittZeit: ergebnis === "schritt" && schrittZeitRoh !== "" ? Number(schrittZeitRoh) : null,
+      schrittRichtung: ergebnis === "schritt" ? formular[id + "_schritt_richtung"].value : "",
     };
+    // Ohne eigene Standzeit gilt die Zeit bis zum Ausfallschritt
+    if (d.zeit === null && d.schrittZeit !== null) d.zeit = d.schrittZeit;
     d.erhoben = ergebnis !== "nicht" && (d.zeit !== null || d.schwankung !== null || ergebnis !== "");
     // Bestanden = Maximalzeit gehalten ohne Ausfallschritt / Hilfe
     d.bestanden = d.erhoben && ergebnis !== "schritt" && ergebnis !== "halt" &&
@@ -183,6 +216,30 @@
         : "Wechselnde Fallneigung (" + richtungen.join(", ") + ")." });
     }
 
+    // Ausfallschritte
+    const schritte = BEDINGUNGEN.filter(function (b) { return d[b.id].ergebnis === "schritt"; });
+    if (schritte.length) {
+      befunde.push({ typ: "info", text: "Ausfallschritt: " + schritte.map(function (b) {
+        const s = d[b.id];
+        return KURZNAMEN[b.id] + (s.schrittZeit !== null ? " nach " + s.schrittZeit + " s" : "") +
+          (s.schrittRichtung ? " " + s.schrittRichtung : "");
+      }).join("; ") + "." });
+      const seiten = schritte.map(function (b) {
+        const m = /(rechts|links)/.exec(d[b.id].schrittRichtung);
+        return m && m[1];
+      });
+      if (schritte.length > 1 && seiten[0] && seiten.every(function (x) { return x === seiten[0]; })) {
+        befunde.push({ typ: "info", text: "Ausfallschritte konstant nach " + seiten[0] + " – seitenkonstante Gleichgewichtsstörung (z. B. vestibulär oder zerebellär ipsilateral) prüfen." });
+      }
+      const unvollstaendig = schritte.filter(function (b) {
+        return d[b.id].schrittZeit === null || !d[b.id].schrittRichtung;
+      });
+      if (unvollstaendig.length) {
+        befunde.push({ typ: "warn", text: "Bitte Zeit und Richtung des Ausfallschritts ergänzen: " +
+          unvollstaendig.map(function (b) { return KURZNAMEN[b.id]; }).join(", ") + "." });
+      }
+    }
+
     // Sturzrisiko
     const hilfe = BEDINGUNGEN.some(function (b) { return d[b.id].ergebnis === "halt"; });
     if (hilfe) befunde.push({ typ: "warn", text: "Festhalten / Hilfe in mindestens einer Bedingung nötig – erhöhtes Sturzrisiko, Sturzprophylaxe prüfen." });
@@ -234,6 +291,7 @@
       else el.value = daten[k];
     });
     aktuelleIdSetzen(daten._db_id || null);
+    alleSchrittDetailsAktualisieren();
     diagnoseGeaendert(false);
     durchfuehrbarGeaendert();
     auswerten();
@@ -421,6 +479,7 @@
 
   function initialisieren() {
     formular.datum.value = new Date().toISOString().slice(0, 10);
+    alleSchrittDetailsAktualisieren();
     diagnoseGeaendert(false);
     durchfuehrbarGeaendert();
     auswerten();

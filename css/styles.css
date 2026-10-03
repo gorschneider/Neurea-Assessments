@@ -186,3 +186,6 @@ th { position: sticky; top: 0; background: var(--karte); color: var(--gedimmt); 
 td.leer { color: var(--gedimmt); }
 .zeilen-aktionen { white-space: nowrap; }
 .zeilen-aktionen button { padding: 4px 10px; font-size: .82rem; margin-left: 4px; }
+
+/* Ausfallschritt-Details */
+.schritt-details { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--rand); }

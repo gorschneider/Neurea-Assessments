@@ -20,7 +20,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 BASIS = Path(__file__).resolve().parent
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 BEDINGUNGEN = {
     "ro_ao": ("romberg", "offen"),
@@ -79,13 +79,32 @@ CREATE TABLE IF NOT EXISTS messung (
     schwankung       INTEGER,                -- 0 keine, 1 leicht, 2 mäßig, 3 stark
     fallneigung      TEXT,
     ergebnis         TEXT,                   -- sicher / schritt / halt / nicht
+    schritt_zeit_s   REAL,                   -- Zeit bis zum Ausfallschritt
+    schritt_richtung TEXT,                   -- Richtung des Ausfallschritts
     UNIQUE (untersuchung_id, bedingung)
 );
 
 CREATE INDEX IF NOT EXISTS ix_untersuchung_patient ON untersuchung(patient_id);
 CREATE INDEX IF NOT EXISTS ix_untersuchung_diagnose ON untersuchung(diagnose);
+"""
 
--- Flache Analyse-Ansicht: eine Zeile pro Untersuchung, Messungen als Spalten.
+# Spalten, die zu älteren Datenbankversionen nachträglich hinzugefügt werden.
+MIGRATIONEN = {
+    "messung": [("schritt_zeit_s", "REAL"), ("schritt_richtung", "TEXT")],
+}
+
+# Messwerte je Bedingung, die in v_analyse als eigene Spalten erscheinen.
+PIVOT_SPALTEN = ["zeit_s", "schwankung", "fallneigung", "ergebnis", "schritt_zeit_s", "schritt_richtung"]
+
+
+def view_sql():
+    """Flache Analyse-Ansicht: eine Zeile pro Untersuchung, Messungen als Spalten."""
+    pivot = ",\n".join(
+        f"    MAX(CASE WHEN m.bedingung = '{b}' THEN m.{spalte} END) AS {b}_{spalte}"
+        for b in BEDINGUNGEN
+        for spalte in PIVOT_SPALTEN
+    )
+    return f"""
 DROP VIEW IF EXISTS v_analyse;
 CREATE VIEW v_analyse AS
 SELECT
@@ -109,22 +128,7 @@ SELECT
     u.einschaetzung,
     u.auswertung_vorschlag,
     u.symptome,
-    MAX(CASE WHEN m.bedingung = 'ro_ao' THEN m.zeit_s END)       AS ro_ao_zeit_s,
-    MAX(CASE WHEN m.bedingung = 'ro_ao' THEN m.schwankung END)   AS ro_ao_schwankung,
-    MAX(CASE WHEN m.bedingung = 'ro_ao' THEN m.fallneigung END)  AS ro_ao_fallneigung,
-    MAX(CASE WHEN m.bedingung = 'ro_ao' THEN m.ergebnis END)     AS ro_ao_ergebnis,
-    MAX(CASE WHEN m.bedingung = 'ro_ag' THEN m.zeit_s END)       AS ro_ag_zeit_s,
-    MAX(CASE WHEN m.bedingung = 'ro_ag' THEN m.schwankung END)   AS ro_ag_schwankung,
-    MAX(CASE WHEN m.bedingung = 'ro_ag' THEN m.fallneigung END)  AS ro_ag_fallneigung,
-    MAX(CASE WHEN m.bedingung = 'ro_ag' THEN m.ergebnis END)     AS ro_ag_ergebnis,
-    MAX(CASE WHEN m.bedingung = 'sr_ao' THEN m.zeit_s END)       AS sr_ao_zeit_s,
-    MAX(CASE WHEN m.bedingung = 'sr_ao' THEN m.schwankung END)   AS sr_ao_schwankung,
-    MAX(CASE WHEN m.bedingung = 'sr_ao' THEN m.fallneigung END)  AS sr_ao_fallneigung,
-    MAX(CASE WHEN m.bedingung = 'sr_ao' THEN m.ergebnis END)     AS sr_ao_ergebnis,
-    MAX(CASE WHEN m.bedingung = 'sr_ag' THEN m.zeit_s END)       AS sr_ag_zeit_s,
-    MAX(CASE WHEN m.bedingung = 'sr_ag' THEN m.schwankung END)   AS sr_ag_schwankung,
-    MAX(CASE WHEN m.bedingung = 'sr_ag' THEN m.fallneigung END)  AS sr_ag_fallneigung,
-    MAX(CASE WHEN m.bedingung = 'sr_ag' THEN m.ergebnis END)     AS sr_ag_ergebnis
+{pivot}
 FROM untersuchung u
 JOIN patient p ON p.id = u.patient_id
 LEFT JOIN messung m ON m.untersuchung_id = u.id
@@ -159,6 +163,12 @@ class Datenbank:
         self.pfad.parent.mkdir(parents=True, exist_ok=True)
         with self.verbindung() as con:
             con.executescript(SCHEMA)
+            for tabelle, spalten in MIGRATIONEN.items():
+                vorhanden = {z[1] for z in con.execute(f"PRAGMA table_info({tabelle})")}
+                for name, typ in spalten:
+                    if name not in vorhanden:
+                        con.execute(f"ALTER TABLE {tabelle} ADD COLUMN {name} {typ}")
+            con.executescript(view_sql())
             con.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     def verbindung(self):
@@ -241,13 +251,16 @@ class Datenbank:
                     zahl(d.get(f"{bed}_schwankung"), int),
                     leer_zu_none(d.get(f"{bed}_richtung")),
                     leer_zu_none(d.get(f"{bed}_ergebnis")),
+                    zahl(d.get(f"{bed}_schritt_zeit")),
+                    leer_zu_none(d.get(f"{bed}_schritt_richtung")),
                 )
                 if all(w is None for w in werte):
                     continue
                 con.execute(
                     """INSERT INTO messung (untersuchung_id, bedingung, test, augen,
-                           zeit_s, schwankung, fallneigung, ergebnis)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                           zeit_s, schwankung, fallneigung, ergebnis,
+                           schritt_zeit_s, schritt_richtung)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (untersuchung_id, bed, test, augen, *werte),
                 )
         return untersuchung_id
@@ -288,6 +301,8 @@ class Datenbank:
             form[f"{b}_schwankung"] = "" if m["schwankung"] is None else str(m["schwankung"])
             form[f"{b}_richtung"] = m["fallneigung"] or ""
             form[f"{b}_ergebnis"] = m["ergebnis"] or ""
+            form[f"{b}_schritt_zeit"] = "" if m["schritt_zeit_s"] is None else f"{m['schritt_zeit_s']:g}"
+            form[f"{b}_schritt_richtung"] = m["schritt_richtung"] or ""
         form["_db_id"] = u["id"]
         return form
 

@@ -19,6 +19,7 @@ Ohne Server (`index.html` direkt öffnen) funktioniert die Maske weiterhin, spei
 
 - Patienten- und Untersuchungsdaten, Haupt- und Nebendiagnose per Drop-down (gruppierte neurologische Krankheitsbilder mit ICD-10-GM-Vorschlag, Freitext-Option; Liste in `js/diagnosen.js`)
 - Vier Testbedingungen: Romberg und Sharpened Romberg, jeweils Augen offen / geschlossen
+- Bei Ergebnis „Ausfallschritt“: Zeit bis zum Ausfallschritt und Richtung (8 Richtungen oder wechselnd)
 - Automatischer Auswertungsvorschlag
 - **In Datenbank speichern**, bestehende Untersuchungen öffnen, ändern, löschen und durchsuchen
 - **CSV-Export** der Analyse-Tabelle (Semikolon-getrennt, Excel-kompatibel)
@@ -26,13 +27,13 @@ Ohne Server (`index.html` direkt öffnen) funktioniert die Maske weiterhin, spei
 
 ## Datenbank
 
-Standardpfad: `daten/romberg.db` (eine SQLite-Datei; regelmäßig sichern). Der Ordner `daten/` ist per `.gitignore` von der Versionierung ausgeschlossen.
+Standardpfad: `daten/romberg.db` (eine SQLite-Datei; regelmäßig sichern). Bestehende Datenbanken werden beim Start automatisch um neue Spalten ergänzt. Der Ordner `daten/` ist per `.gitignore` von der Versionierung ausgeschlossen.
 
 | Tabelle / View | Inhalt |
 |---|---|
 | `patient` | eine Zeile pro Patient/in (`patient_ref`, Geburtsdatum, Geschlecht) |
 | `untersuchung` | eine Zeile pro Untersuchung (Diagnose, Rahmenbedingungen, Einschätzung …) |
-| `messung` | eine Zeile pro Testbedingung (`test` romberg/tandem, `augen` offen/geschlossen, `zeit_s`, `schwankung` 0–3, `fallneigung`, `ergebnis`) |
+| `messung` | eine Zeile pro Testbedingung (`test` romberg/tandem, `augen` offen/geschlossen, `zeit_s`, `schwankung` 0–3, `fallneigung`, `ergebnis`, bei Ausfallschritt `schritt_zeit_s` und `schritt_richtung`) |
 | `v_analyse` | flache Sicht: eine Zeile pro Untersuchung, Messungen als Spalten, plus `alter_jahre` und `tage_seit_ereignis` |
 
 Mehrere Untersuchungen derselben Person (Aufnahme / Verlauf / Entlassung) hängen über `patient_ref` am selben Patienten – damit sind Verlaufsanalysen möglich.
