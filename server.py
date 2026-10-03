@@ -329,6 +329,7 @@ class Datenbank:
 
 class Handler(SimpleHTTPRequestHandler):
     db: Datenbank = None
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, ".webmanifest": "application/manifest+json"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASIS), **kwargs)

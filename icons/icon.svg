@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a9bff"/>
+      <stop offset="1" stop-color="#0062d6"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" rx="40" fill="url(#g)"/>
+  <!-- stehende Person, Füße geschlossen -->
+  <circle cx="90" cy="46" r="13" fill="#fff"/>
+  <path d="M90 64v52M90 116l-6 30M90 116l6 30M62 80h56" stroke="#fff" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <!-- Schwankungsbögen -->
+  <path d="M46 62a60 60 0 0 0 0 64M134 62a60 60 0 0 1 0 64" stroke="#fff" stroke-opacity=".55" stroke-width="6" stroke-linecap="round" fill="none"/>
+</svg>

@@ -270,7 +270,14 @@
     const daten = {};
     new FormData(formular).forEach(function (wert, schluessel) { daten[schluessel] = wert; });
     // Deaktivierte Felder fehlen in FormData – explizit ergänzen
-    formular.querySelectorAll("[name]:disabled").forEach(function (el) { daten[el.name] = el.value; });
+    formular.querySelectorAll("[name]:disabled").forEach(function (el) {
+      if (el.type === "radio") {
+        if (el.checked) daten[el.name] = el.value;
+        else if (!(el.name in daten)) daten[el.name] = "";
+      } else {
+        daten[el.name] = el.value;
+      }
+    });
     const diagOpt = selDiagnose.selectedOptions[0];
     daten.diagnose_icd_vorschlag = (diagOpt && diagOpt.dataset.code) || "";
     daten.diagnose_gruppe = diagOpt && diagOpt.parentElement.tagName === "OPTGROUP" ? diagOpt.parentElement.label : "";
@@ -376,9 +383,8 @@
   function aktuelleIdSetzen(id) {
     aktuelleId = id;
     const el = document.getElementById("db-status");
-    el.textContent = id ? "Datensatz #" + id : "neuer Datensatz";
-    document.getElementById("btn-db-speichern").textContent =
-      id ? "Änderungen speichern" : "In Datenbank speichern";
+    el.textContent = id ? "Datensatz #" + id : "Neuer Datensatz";
+    document.getElementById("btn-db-speichern").textContent = id ? "Aktualisieren" : "Sichern";
   }
 
   function dbPruefen() {
@@ -386,6 +392,7 @@
     api("/api/status").then(function (s) {
       dbVerfuegbar = true;
       document.querySelectorAll(".db-only").forEach(function (el) { el.classList.remove("versteckt"); });
+      document.querySelectorAll(".nur-ohne-db").forEach(function (el) { el.classList.add("versteckt"); });
       document.getElementById("fuss-speicherort").textContent = "Datenbank: " + s.datenbank;
       aktuelleIdSetzen(aktuelleId);
     }).catch(function () { /* ohne Server: nur Browser-Entwurf */ });
@@ -461,6 +468,45 @@
   });
   document.getElementById("btn-dlg-schliessen").addEventListener("click", function () { dlgListe.close(); });
   inpSuche.addEventListener("input", listeZeichnen);
+
+  // ---------- Apple-typische Bedienelemente ----------
+
+  // Aktionsmenü schließen: nach Auswahl, bei Klick daneben und mit Escape
+  const menue = document.getElementById("menue");
+  menue.querySelector(".menue-panel").addEventListener("click", function (e) {
+    if (e.target.closest("button, a")) menue.open = false;
+  });
+  document.getElementById("inp-import").addEventListener("change", function () { menue.open = false; });
+  document.addEventListener("click", function (e) {
+    if (menue.open && !menue.contains(e.target)) menue.open = false;
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") menue.open = false;
+  });
+
+  // Navigationsleiste: Titel und Trennlinie erst nach dem Scrollen einblenden
+  const navleiste = document.querySelector(".navleiste");
+  const grosserTitel = document.getElementById("grosser-titel");
+  function navAktualisieren() {
+    navleiste.classList.toggle("gescrollt", grosserTitel.getBoundingClientRect().bottom < navleiste.offsetHeight);
+  }
+  window.addEventListener("scroll", navAktualisieren, { passive: true });
+  navAktualisieren();
+
+  // Segmente mit Klasse "abwaehlbar": erneutes Tippen hebt die Auswahl auf
+  let warGewaehlt = null;
+  formular.addEventListener("pointerdown", function (e) {
+    const label = e.target.closest(".segment.abwaehlbar label");
+    const input = label && label.querySelector("input");
+    warGewaehlt = input && input.checked && !input.disabled ? input : null;
+  });
+  formular.addEventListener("click", function (e) {
+    const input = warGewaehlt;
+    warGewaehlt = null;
+    if (!input || e.target !== input) return;
+    input.checked = false;
+    formular.dispatchEvent(new Event("change", { bubbles: true }));
+  });
 
   function meldung(text) {
     let el = document.getElementById("meldung");

@@ -15,6 +15,10 @@ Optionen: `python server.py --port 9000 --db D:\Pfad\romberg.db --kein-browser`
 
 Ohne Server (`index.html` direkt öffnen) funktioniert die Maske weiterhin, speichert dann aber nur Entwürfe im Browser.
 
+## Design
+
+Die Oberfläche folgt den Apple Human Interface Guidelines: Systemschrift (SF Pro auf Apple-Geräten), iOS-Systemfarben, gruppierte Abschnitte, Segmented Controls, transluzente Navigationsleiste, automatischer Dark Mode und große Tippflächen. Auf iPhone/iPad lässt sich die Seite über „Teilen → Zum Home-Bildschirm“ wie eine App ablegen (eigenes Icon, Vollbild).
+
 ## Funktionen
 
 - Patienten- und Untersuchungsdaten, Haupt- und Nebendiagnose per Drop-down (gruppierte neurologische Krankheitsbilder mit ICD-10-GM-Vorschlag, Freitext-Option; Liste in `js/diagnosen.js`)

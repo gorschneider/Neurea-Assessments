@@ -2,72 +2,102 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Romberg-Assessment</title>
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Romberg">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <header class="kopf">
-    <div>
-      <h1>Romberg-Assessment</h1>
-      <p class="untertitel">Eingabemaske Gleichgewicht / Standataxie · Neurologische Rehabilitation</p>
-    </div>
-    <div class="aktionen kein-druck">
-      <span class="db-only versteckt" id="db-status"></span>
-      <button type="button" class="db-only versteckt" id="btn-db-speichern">In Datenbank speichern</button>
-      <button type="button" class="db-only versteckt" id="btn-db-liste">Gespeicherte Untersuchungen</button>
-      <button type="button" id="btn-speichern">Entwurf speichern</button>
-      <button type="button" id="btn-export">JSON exportieren</button>
-      <label class="button-label">JSON importieren<input type="file" id="inp-import" accept="application/json" hidden></label>
-      <button type="button" id="btn-drucken">Drucken / PDF</button>
-      <button type="button" id="btn-reset" class="gefahr">Neu</button>
+  <!-- Navigationsleiste (iOS-Stil, transluzent) -->
+  <header class="navleiste kein-druck">
+    <div class="nav-innen">
+      <button type="button" id="btn-reset" class="nav-text gefahr">Neu</button>
+      <span class="nav-titel" id="nav-titel">Romberg-Assessment</span>
+      <div class="nav-rechts">
+        <button type="button" id="btn-speichern" class="nav-primaer nur-ohne-db">Entwurf sichern</button>
+        <button type="button" id="btn-db-speichern" class="nav-primaer db-only versteckt">Sichern</button>
+        <details class="menue" id="menue">
+          <summary class="nav-icon" aria-label="Weitere Aktionen">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="7.5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="16.5" cy="12" r="1.4" fill="currentColor"/></svg>
+          </summary>
+          <div class="menue-panel" role="menu">
+            <button type="button" id="btn-db-liste" class="db-only versteckt" role="menuitem">Gespeicherte Untersuchungen</button>
+            <a href="/api/export.csv" download class="db-only versteckt" role="menuitem">CSV-Export (Analyse)</a>
+            <hr class="db-only versteckt">
+            <button type="button" id="btn-export" role="menuitem">JSON exportieren</button>
+            <label role="menuitem">JSON importieren<input type="file" id="inp-import" accept="application/json" hidden></label>
+            <button type="button" id="btn-drucken" role="menuitem">Drucken / PDF</button>
+          </div>
+        </details>
+      </div>
     </div>
   </header>
 
   <main>
+    <div class="grosser-titel">
+      <h1 id="grosser-titel">Romberg-Assessment</h1>
+      <p class="untertitel">Gleichgewicht &amp; Standataxie · Neurologische Rehabilitation</p>
+      <span class="status-chip db-only versteckt" id="db-status"></span>
+    </div>
+
     <form id="formular" novalidate>
       <!-- 1. Patientendaten -->
-      <section class="karte">
-        <h2>1. Patient &amp; Untersuchung</h2>
-        <div class="raster">
-          <label>Patient (Name / ID) *<input name="patient" required autocomplete="off"></label>
+      <section class="abschnitt">
+        <h2 class="abschnitt-titel">Patient &amp; Untersuchung</h2>
+        <div class="gruppe raster">
+          <label><span>Patient (Name / ID) <i>*</i></span><input name="patient" required autocomplete="off" placeholder="z. B. PSN-001"></label>
           <label>Geburtsdatum<input type="date" name="geburtsdatum"></label>
-          <label>Geschlecht
-            <select name="geschlecht">
-              <option value="">– bitte wählen –</option>
-              <option>weiblich</option><option>männlich</option><option>divers</option>
-            </select>
-          </label>
-          <label>Untersuchungsdatum *<input type="date" name="datum" required></label>
-          <label>Untersucher/in *<input name="untersucher" required></label>
+          <div class="feld">
+            <span class="feld-label">Geschlecht</span>
+            <div class="segment abwaehlbar">
+              <label><input type="radio" name="geschlecht" value="weiblich"><span>weiblich</span></label>
+              <label><input type="radio" name="geschlecht" value="männlich"><span>männlich</span></label>
+              <label><input type="radio" name="geschlecht" value="divers"><span>divers</span></label>
+            </div>
+          </div>
+          <label><span>Untersuchungsdatum <i>*</i></span><input type="date" name="datum" required></label>
+          <label><span>Untersucher/in <i>*</i></span><input name="untersucher" required></label>
           <label>Station / Bereich<input name="station"></label>
-          <label>Messzeitpunkt
-            <select name="messzeitpunkt">
-              <option value="">– bitte wählen –</option>
-              <option>Aufnahme</option><option>Verlauf</option><option>Entlassung</option>
-            </select>
-          </label>
+          <div class="feld breit">
+            <span class="feld-label">Messzeitpunkt</span>
+            <div class="segment abwaehlbar">
+              <label><input type="radio" name="messzeitpunkt" value="Aufnahme"><span>Aufnahme</span></label>
+              <label><input type="radio" name="messzeitpunkt" value="Verlauf"><span>Verlauf</span></label>
+              <label><input type="radio" name="messzeitpunkt" value="Entlassung"><span>Entlassung</span></label>
+            </div>
+          </div>
         </div>
       </section>
 
       <!-- 2. Diagnose -->
-      <section class="karte">
-        <h2>2. Diagnose</h2>
-        <div class="raster">
-          <label class="breit">Hauptdiagnose *
+      <section class="abschnitt">
+        <h2 class="abschnitt-titel">Diagnose</h2>
+        <div class="gruppe raster">
+          <label class="breit"><span>Hauptdiagnose <i>*</i></span>
             <select name="diagnose" id="sel-diagnose" required></select>
           </label>
-          <label class="breit versteckt" id="feld-diagnose-frei">Diagnose (Freitext) *
+          <label class="breit versteckt" id="feld-diagnose-frei"><span>Diagnose (Freitext) <i>*</i></span>
             <input name="diagnose_frei">
           </label>
           <label>ICD-10-GM<input name="icd" id="inp-icd" placeholder="wird vorgeschlagen"></label>
-          <label>Betroffene Seite
-            <select name="seite">
-              <option value="">– bitte wählen –</option>
-              <option>rechts</option><option>links</option><option>beidseits</option><option>nicht zutreffend</option>
-            </select>
-          </label>
           <label>Ereignis / Erstdiagnose<input type="date" name="ereignisdatum"></label>
+          <div class="feld breit">
+            <span class="feld-label">Betroffene Seite</span>
+            <div class="segment abwaehlbar">
+              <label><input type="radio" name="seite" value="rechts"><span>rechts</span></label>
+              <label><input type="radio" name="seite" value="links"><span>links</span></label>
+              <label><input type="radio" name="seite" value="beidseits"><span>beidseits</span></label>
+              <label><input type="radio" name="seite" value="nicht zutreffend"><span>n. z.</span></label>
+            </div>
+          </div>
           <label class="breit">Nebendiagnose
             <select name="nebendiagnose" id="sel-nebendiagnose"></select>
           </label>
@@ -75,51 +105,63 @@
       </section>
 
       <!-- 3. Rahmenbedingungen -->
-      <section class="karte">
-        <h2>3. Rahmenbedingungen</h2>
-        <div class="raster">
-          <label>Untergrund
-            <select name="untergrund">
-              <option>fester Boden</option><option>Schaumstoffmatte</option>
-            </select>
-          </label>
-          <label>Schuhwerk
-            <select name="schuhwerk">
-              <option>barfuß</option><option>Strümpfe</option><option>eigene Schuhe</option>
-            </select>
-          </label>
-          <label>Max. Testdauer je Bedingung (s)
-            <select name="maxdauer" id="sel-maxdauer">
-              <option value="30" selected>30</option><option value="60">60</option>
-            </select>
-          </label>
-          <label>Sicherung durch Therapeut/in
-            <select name="sicherung">
-              <option>Stand-by</option><option>Kontaktsicherung</option><option>keine</option>
-            </select>
-          </label>
-          <fieldset class="breit">
-            <legend>Test durchführbar?</legend>
-            <label class="inline"><input type="radio" name="durchfuehrbar" value="ja" checked> ja</label>
-            <label class="inline"><input type="radio" name="durchfuehrbar" value="nein"> nein</label>
+      <section class="abschnitt">
+        <h2 class="abschnitt-titel">Rahmenbedingungen</h2>
+        <div class="gruppe raster">
+          <div class="feld">
+            <span class="feld-label">Untergrund</span>
+            <div class="segment">
+              <label><input type="radio" name="untergrund" value="fester Boden" checked><span>fester Boden</span></label>
+              <label><input type="radio" name="untergrund" value="Schaumstoffmatte"><span>Schaumstoff</span></label>
+            </div>
+          </div>
+          <div class="feld">
+            <span class="feld-label">Schuhwerk</span>
+            <div class="segment">
+              <label><input type="radio" name="schuhwerk" value="barfuß" checked><span>barfuß</span></label>
+              <label><input type="radio" name="schuhwerk" value="Strümpfe"><span>Strümpfe</span></label>
+              <label><input type="radio" name="schuhwerk" value="eigene Schuhe"><span>Schuhe</span></label>
+            </div>
+          </div>
+          <div class="feld">
+            <span class="feld-label">Max. Testdauer je Bedingung</span>
+            <div class="segment">
+              <label><input type="radio" name="maxdauer" value="30" checked><span>30 s</span></label>
+              <label><input type="radio" name="maxdauer" value="60"><span>60 s</span></label>
+            </div>
+          </div>
+          <div class="feld">
+            <span class="feld-label">Sicherung durch Therapeut/in</span>
+            <div class="segment">
+              <label><input type="radio" name="sicherung" value="Stand-by" checked><span>Stand-by</span></label>
+              <label><input type="radio" name="sicherung" value="Kontaktsicherung"><span>Kontakt</span></label>
+              <label><input type="radio" name="sicherung" value="keine"><span>keine</span></label>
+            </div>
+          </div>
+          <div class="feld breit">
+            <span class="feld-label">Test durchführbar?</span>
+            <div class="segment segment-schmal">
+              <label><input type="radio" name="durchfuehrbar" value="ja" checked><span>ja</span></label>
+              <label><input type="radio" name="durchfuehrbar" value="nein"><span>nein</span></label>
+            </div>
             <input name="abbruchgrund" id="inp-abbruchgrund" class="versteckt" placeholder="Grund (z. B. kein freier Stand möglich)">
-          </fieldset>
+          </div>
         </div>
       </section>
 
       <!-- 4. Testbedingungen -->
-      <section class="karte" id="karte-test">
-        <h2>4. Testdurchführung</h2>
-        <p class="hinweis">Aufrechter Stand, Arme vor dem Körper ausgestreckt oder seitlich hängend. Zeit bis zum Verlassen der Ausgangsposition (Ausfallschritt, Festhalten, Augenöffnen) bzw. bis zur maximalen Testdauer.</p>
+      <section class="abschnitt" id="karte-test">
+        <h2 class="abschnitt-titel">Testdurchführung</h2>
         <div id="bedingungen"></div>
+        <p class="abschnitt-fuss">Aufrechter Stand, Arme vor dem Körper ausgestreckt oder seitlich hängend. Zeit bis zum Verlassen der Ausgangsposition (Ausfallschritt, Festhalten, Augenöffnen) bzw. bis zur maximalen Testdauer.</p>
       </section>
 
       <!-- 5. Auswertung -->
-      <section class="karte">
-        <h2>5. Auswertung</h2>
+      <section class="abschnitt">
+        <h2 class="abschnitt-titel">Auswertung</h2>
         <div id="auswertung" class="auswertung" aria-live="polite"></div>
-        <div class="raster">
-          <label>Klinische Einschätzung Romberg
+        <div class="gruppe raster">
+          <label>Klinische Einschätzung
             <select name="einschaetzung" id="sel-einschaetzung">
               <option value="">– automatisch vorgeschlagen –</option>
               <option>Romberg negativ</option>
@@ -142,19 +184,19 @@
   </main>
 
   <template id="tpl-bedingung">
-    <fieldset class="bedingung">
+    <fieldset class="gruppe bedingung">
       <legend></legend>
       <div class="raster">
-        <label>Zeit (s)<input type="number" min="0" step="0.1" data-feld="zeit"></label>
-        <label>Schwankung
-          <select data-feld="schwankung">
-            <option value="">–</option>
-            <option value="0">keine</option>
-            <option value="1">leicht</option>
-            <option value="2">mäßig</option>
-            <option value="3">stark</option>
-          </select>
-        </label>
+        <label>Zeit (s)<input type="number" inputmode="decimal" min="0" step="0.1" data-feld="zeit" placeholder="0,0"></label>
+        <div class="feld">
+          <span class="feld-label">Schwankung</span>
+          <div class="segment abwaehlbar">
+            <label><input type="radio" value="0" data-feld="schwankung"><span>keine</span></label>
+            <label><input type="radio" value="1" data-feld="schwankung"><span>leicht</span></label>
+            <label><input type="radio" value="2" data-feld="schwankung"><span>mäßig</span></label>
+            <label><input type="radio" value="3" data-feld="schwankung"><span>stark</span></label>
+          </div>
+        </div>
         <label>Fallneigung
           <select data-feld="richtung">
             <option value="">keine</option>
@@ -173,7 +215,7 @@
         </label>
       </div>
       <div class="raster schritt-details versteckt">
-        <label>Zeit bis Ausfallschritt (s)<input type="number" min="0" step="0.1" data-feld="schritt_zeit"></label>
+        <label>Zeit bis Ausfallschritt (s)<input type="number" inputmode="decimal" min="0" step="0.1" data-feld="schritt_zeit" placeholder="0,0"></label>
         <label>Richtung Ausfallschritt
           <select data-feld="schritt_richtung">
             <option value="">– bitte wählen –</option>
@@ -190,13 +232,11 @@
 
   <dialog id="dlg-liste" class="kein-druck">
     <div class="dlg-kopf">
-      <h2>Gespeicherte Untersuchungen</h2>
-      <div class="aktionen">
-        <a class="button-label" href="/api/export.csv" download>CSV-Export (Analyse)</a>
-        <button type="button" id="btn-dlg-schliessen">Schließen</button>
-      </div>
+      <span></span>
+      <h2>Untersuchungen</h2>
+      <button type="button" id="btn-dlg-schliessen" class="nav-text fett">Fertig</button>
     </div>
-    <input type="search" id="inp-suche" placeholder="Suchen (Patient, Diagnose, Datum) …">
+    <input type="search" id="inp-suche" placeholder="Suchen">
     <div class="tabelle-rahmen">
       <table>
         <thead><tr><th>#</th><th>Datum</th><th>Patient</th><th>Zeitpunkt</th><th>Diagnose</th><th>Einschätzung</th><th></th></tr></thead>
